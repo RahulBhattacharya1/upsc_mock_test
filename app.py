@@ -166,7 +166,7 @@ def offline_mcq_bank(topic: str, difficulty: str, language: str, seed: int, n: i
         rng.shuffle(options)
         truth = rng.choice(options)
         correct_index = options.index(truth)
-        qtxt = f"{stem}\n\n1. {s1}\n2. {s2}\n"
+        qtxt = f"{stem}\n\n{s1}\n{s2}\n"
         exp = rng.choice(exps)
         mcqs.append(MCQ(
             id=f"{topic}-{i}-{rng.randint(1000,9999)}",
