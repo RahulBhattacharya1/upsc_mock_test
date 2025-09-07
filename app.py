@@ -20,14 +20,69 @@ except Exception:
 st.set_page_config(page_title="UPSC Mock Test", layout="wide")
 
 # ======================= Rate Limiting =======================
-from shared_config.budget import (
-    COOLDOWN_SECONDS,
-    DAILY_LIMIT,
-    HOURLY_SHARED_CAP,
-    DAILY_BUDGET,
-    EST_COST_PER_GEN,
-    VERSION
+# === Runtime budget/limits loader (auto-updates from GitHub) ===
+
+import os, time, types, urllib.request
+import streamlit as st
+
+# Raw URL of your budget.py in the shared repo (override via env if needed)
+BUDGET_URL = os.getenv(
+    "BUDGET_URL",
+    "https://raw.githubusercontent.com/RahulBhattacharya1/shared_config/main/shared_config/budget.py",
 )
+
+# Safe defaults if the fetch fails
+_BUDGET_DEFAULTS = {
+    "COOLDOWN_SECONDS": 30,
+    "DAILY_LIMIT": 40,
+    "HOURLY_SHARED_CAP": 250,
+    "DAILY_BUDGET": 1.00,
+    "EST_COST_PER_GEN": 1.00,
+    "VERSION": "fallback-local",
+}
+
+def _fetch_remote_budget(url: str) -> dict:
+    mod = types.ModuleType("budget_remote")
+    with urllib.request.urlopen(url, timeout=5) as r:
+        code = r.read().decode("utf-8")
+    exec(compile(code, "budget_remote", "exec"), mod.__dict__)
+    cfg = {}
+    for k in _BUDGET_DEFAULTS.keys():
+        cfg[k] = getattr(mod, k, _BUDGET_DEFAULTS[k])
+    return cfg
+
+def get_budget(ttl_seconds: int = 300) -> dict:
+    """Fetch and cache remote budget in session state with a TTL."""
+    now = time.time()
+    cache = st.session_state.get("_budget_cache")
+    ts = st.session_state.get("_budget_cache_ts", 0)
+
+    if cache and (now - ts) < ttl_seconds:
+        return cache
+
+    try:
+        cfg = _fetch_remote_budget(BUDGET_URL)
+    except Exception:
+        cfg = _BUDGET_DEFAULTS.copy()
+
+    # Allow env overrides if you want per-deploy tuning
+    cfg["DAILY_BUDGET"] = float(os.getenv("DAILY_BUDGET", cfg["DAILY_BUDGET"]))
+    cfg["EST_COST_PER_GEN"] = float(os.getenv("EST_COST_PER_GEN", cfg["EST_COST_PER_GEN"]))
+
+    st.session_state["_budget_cache"] = cfg
+    st.session_state["_budget_cache_ts"] = now
+    return cfg
+
+# Load once (respects TTL); you can expose a "Refresh config" button to clear cache
+_cfg = get_budget(ttl_seconds=300)
+
+COOLDOWN_SECONDS  = int(_cfg["COOLDOWN_SECONDS"])
+DAILY_LIMIT       = int(_cfg["DAILY_LIMIT"])
+HOURLY_SHARED_CAP = int(_cfg["HOURLY_SHARED_CAP"])
+DAILY_BUDGET      = float(_cfg["DAILY_BUDGET"])
+EST_COST_PER_GEN  = float(_cfg["EST_COST_PER_GEN"])
+CONFIG_VERSION    = str(_cfg.get("VERSION", "unknown"))
+# === End runtime loader ===
 
 
 def _hour_bucket(now=None):
