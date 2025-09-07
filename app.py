@@ -2,6 +2,7 @@
 
 import time
 import json
+import hashlib
 import random
 import datetime as dt
 from dataclasses import dataclass
@@ -453,7 +454,9 @@ def render_prelims():
 
     for i, q in enumerate(st.session_state.prelims_qs, start=1):
         st.markdown(f"**Q{i}.** {q.question}")
-        widget_key = f"ans_{q.id}"             # unique across runs/shuffles
+        safe_id = (getattr(q, "id", "") or "").strip() or f"q{i}"
+        qid_hash = hashlib.md5((q.question or "").encode("utf-8")).hexdigest()[:6]
+        widget_key = f"ans_{i}_{safe_id}_{qid_hash}"             # unique across runs/shuffles
         current = st.session_state.answers.get(q.id, None)
         choice = st.radio(
             "Select an option:",
@@ -515,7 +518,9 @@ def render_mains():
     for i, e in enumerate(st.session_state.mains_qs, start=1):
         st.markdown(f"**Q{i}.** {e.prompt}")
         st.caption("Rubric points: " + " · ".join(e.rubric_points))
-        key = f"essay_{e.id}"
+        safe_eid = (getattr(e, "id", "") or "").strip() or f"e{i}"
+        ep_hash = hashlib.md5((e.prompt or "").encode("utf-8")).hexdigest()[:6]
+        key = f"essay_{i}_{safe_eid}_{ep_hash}"
         val = st.session_state.essay_answers.get(e.id, "")
         ans = st.text_area("Your answer:", value=val, height=200, key=key)
         st.session_state.essay_answers[e.id] = ans
