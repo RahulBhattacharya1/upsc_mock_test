@@ -28,7 +28,7 @@ import streamlit as st
 # Raw URL of your budget.py in the shared repo (override via env if needed)
 BUDGET_URL = os.getenv(
     "BUDGET_URL",
-    "https://raw.githubusercontent.com/RahulBhattacharya1/shared_config/main/shared_config/budget.py",
+    "https://raw.githubusercontent.com/RahulBhattacharya1/shared_config/main/budget.py",
 )
 
 # Safe defaults if the fetch fails
