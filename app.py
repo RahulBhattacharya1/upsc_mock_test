@@ -20,12 +20,14 @@ except Exception:
 st.set_page_config(page_title="UPSC Mock Test", layout="wide")
 
 # ======================= Rate Limiting =======================
-COOLDOWN_SECONDS = 30
-DAILY_LIMIT = 40
-HOURLY_SHARED_CAP = 250  # set 0 to disable shared-hourly cap
-# === Cost guardrail ===
-DAILY_BUDGET = 1.00        # hard cap in dollars per day
-EST_COST_PER_GEN = 1.00    # rough cost per generation (use 1.00 to be safe)
+from shared_config.budget import (
+    COOLDOWN_SECONDS,
+    DAILY_LIMIT,
+    HOURLY_SHARED_CAP,
+    DAILY_BUDGET,
+    EST_COST_PER_GEN,
+    VERSION
+)
 
 
 def _hour_bucket(now=None):
