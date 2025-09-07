@@ -295,7 +295,7 @@ with st.sidebar:
     st.subheader("Generator")
     provider = st.selectbox("Provider", ["OpenAI", "Offline (rule-based)"])
     model = st.selectbox("Model (OpenAI)", ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"])
-    brand = st.color_picker("Brand color", value="#0F62FE")
+    brand = "#0F62FE"
     temp = st.slider("Creativity (OpenAI)", 0.0, 1.0, 0.4, 0.05)
     max_tokens = st.slider("Max tokens (OpenAI)", 512, 4096, 1500, 32)
 
