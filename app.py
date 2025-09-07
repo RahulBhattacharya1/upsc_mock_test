@@ -301,23 +301,21 @@ with st.sidebar:
 
     init_rate_limit_state()
     ss = st.session_state
-st.markdown("**Usage limits**")
-st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
-if HOURLY_SHARED_CAP > 0:
-    counters = _shared_hourly_counters()
-    used = counters.get(_hour_bucket(), 0)
-    st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
 
-# --- ADD: budget readout ---
-est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
-st.write(f"Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}")
-# --- END ADD ---
+    st.markdown("**Usage limits**")
+    st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
+    if HOURLY_SHARED_CAP > 0:
+        counters = _shared_hourly_counters()
+        used = counters.get(_hour_bucket(), 0)
+        st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
 
-remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
-if remaining > 0:
-    st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
-    st.caption(f"Cooldown: {remaining}s")
+    est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
+    st.write(f"Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}")
 
+    remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
+    if remaining > 0:
+        st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
+        st.caption(f"Cooldown: {remaining}s")
 
 # ======================= Test Configuration =======================
 colA, colB = st.columns([1.3, 1])
