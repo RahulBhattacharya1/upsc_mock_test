@@ -374,6 +374,15 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
+    st.markdown(
+        f"<span style='font-size:0.8rem; opacity:0.8'>Version: {CONFIG_VERSION}</span>",
+        unsafe_allow_html=True
+    )
+    
+    # Optional: show a warning if we’re on fallback defaults (remote fetch failed)
+    if CONFIG_VERSION == "fallback-local":
+        st.warning("Using fallback defaults — couldn’t fetch remote budget.py")
+
     remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
     if remaining > 0:
         st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
