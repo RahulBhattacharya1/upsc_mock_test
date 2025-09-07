@@ -96,11 +96,12 @@ def brand_h2(text: str, color: str):
     st.markdown(f"<h2 style='margin:.25rem 0 .75rem 0; color:{color}'>{text}</h2>", unsafe_allow_html=True)
 
 def md_card(title_md: str, body_md: str = ""):
+    body_html = f'<div style="margin-top:.35rem">{body_md}</div>' if body_md else ""
     st.markdown(
         f"""
 <div style="border:1px solid #e5e7eb; padding:.75rem 1rem; border-radius:10px; margin-bottom:.75rem;">
   <div style="font-weight:600">{title_md}</div>
-  {f'<div style="margin-top:.35rem'>{body_md}</div>' if body_md else ''}
+  {body_html}
 </div>
         """,
         unsafe_allow_html=True
