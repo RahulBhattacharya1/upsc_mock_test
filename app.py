@@ -22,6 +22,10 @@ st.set_page_config(page_title="UPSC Mock Test", layout="wide")
 COOLDOWN_SECONDS = 30
 DAILY_LIMIT = 40
 HOURLY_SHARED_CAP = 250  # set 0 to disable shared-hourly cap
+# === Cost guardrail ===
+DAILY_BUDGET = 1.00        # hard cap in dollars per day
+EST_COST_PER_GEN = 1.00    # rough cost per generation (use 1.00 to be safe)
+
 
 def _hour_bucket(now=None):
     now = now or dt.datetime.utcnow()
@@ -47,17 +51,29 @@ def can_call_now():
     init_rate_limit_state()
     ss = st.session_state
     now = time.time()
+
+    # Cooldown
     remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - now))
     if remaining > 0:
         return (False, f"Please wait {remaining}s before the next generation.", remaining)
+
+    # Daily budget check (primary guardrail)
+    est_spend = ss["rl_calls_today"] * EST_COST_PER_GEN
+    if est_spend >= DAILY_BUDGET:
+        return (False, f"Daily cost limit reached (${DAILY_BUDGET:.2f}). Try again tomorrow.", 0)
+
+    # Optional: also keep your per-session daily cap (can leave as-is or lower)
     if ss["rl_calls_today"] >= DAILY_LIMIT:
         return (False, f"Daily limit reached ({DAILY_LIMIT} generations). Try again tomorrow.", 0)
+
+    # Optional shared hourly cap
     if HOURLY_SHARED_CAP > 0:
         bucket = _hour_bucket()
         counters = _shared_hourly_counters()
         used = counters.get(bucket, 0)
         if used >= HOURLY_SHARED_CAP:
             return (False, "Hourly capacity reached. Please try later.", 0)
+
     return (True, "", 0)
 
 def record_successful_call():
@@ -285,16 +301,23 @@ with st.sidebar:
 
     init_rate_limit_state()
     ss = st.session_state
-    st.markdown("**Usage limits**")
-    st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
-    if HOURLY_SHARED_CAP > 0:
-        counters = _shared_hourly_counters()
-        used = counters.get(_hour_bucket(), 0)
-        st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
-    remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
-    if remaining > 0:
-        st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
-        st.caption(f"Cooldown: {remaining}s")
+st.markdown("**Usage limits**")
+st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
+if HOURLY_SHARED_CAP > 0:
+    counters = _shared_hourly_counters()
+    used = counters.get(_hour_bucket(), 0)
+    st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
+
+# --- ADD: budget readout ---
+est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
+st.write(f"Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}")
+# --- END ADD ---
+
+remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
+if remaining > 0:
+    st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
+    st.caption(f"Cooldown: {remaining}s")
+
 
 # ======================= Test Configuration =======================
 colA, colB = st.columns([1.3, 1])
