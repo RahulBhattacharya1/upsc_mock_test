@@ -1,22 +1,15 @@
 # app.py — Streamlit UPSC Mock Test (UI-only, OpenAI via st.secrets)
-# Features:
-# - Provider switch (OpenAI / Offline), model picker, brand color, temperature, max tokens
-# - Prelims (MCQ) and Mains (Descriptive) modes
-# - Topic selection (GS, CSAT, Optional subjects), difficulty, time limit, negative marking, shuffle, language
-# - Timed mode, submit, scoring (Prelims), review with explanations, Markdown export
-# - API key read from st.secrets["OPENAI_API_KEY"]; no inline key entry
-# NOTE: No downloads; everything renders in the UI.
 
 import time
 import json
 import random
 import datetime as dt
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 
 import streamlit as st
 
-# OpenAI client (only used if provider == "OpenAI" and key is present)
+# Optional OpenAI client (used only if provider == "OpenAI")
 try:
     from openai import OpenAI
 except Exception:
@@ -96,7 +89,6 @@ def brand_h2(text: str, color: str):
     st.markdown(f"<h2 style='margin:.25rem 0 .75rem 0; color:{color}'>{text}</h2>", unsafe_allow_html=True)
 
 def md_card(title_text: str, body_html: str = ""):
-    # body_html must be real HTML (use <b>…</b>, <br>, lists, etc.)
     extra = f'<div style="margin-top:.35rem">{body_html}</div>' if body_html else ""
     st.markdown(
         f"""
@@ -113,9 +105,7 @@ GS_PRELIMS = [
     "Polity & Governance", "Economy", "Geography", "History & Culture",
     "Environment & Ecology", "Science & Tech", "Current Affairs"
 ]
-
 CSAT_SECTIONS = ["Comprehension", "Reasoning", "Data Interpretation", "Basic Numeracy"]
-
 MAINS_GS = [
     "GS1: History & Culture, Society, Geography",
     "GS2: Polity, Governance, IR",
@@ -123,7 +113,6 @@ MAINS_GS = [
     "GS4: Ethics, Integrity, Aptitude",
     "Essay"
 ]
-
 OPTIONALS = [
     "Public Administration", "Sociology", "Anthropology", "Geography (Optional)",
     "History (Optional)", "Political Science & IR", "Economics (Optional)",
@@ -147,34 +136,18 @@ def offline_mcq_bank(topic: str, difficulty: str, language: str, seed: int, n: i
         "{X} is linked to demographic trends.",
         "{X} is notified under a recent policy."
     ]
-    distractors = [
-        "Only 1", "Only 2", "Both 1 and 2", "Neither 1 nor 2",
-        "1 and 3 only", "2 and 3 only", "All of the above", "None of the above"
-    ]
     exps = [
         "Statement 1 is correct because of its legal basis; Statement 2 is incorrect due to scope limits.",
         "The provision applies conditionally; hence only one statement holds.",
         "Recent committee reports clarify the scope, aligning with option chosen."
     ]
-
     for i in range(n):
         stem = rng.choice(stems).format(X=topic)
-        # Make two-statement style for prelims feel
         s1 = rng.choice(facts).format(X=topic)
         s2 = rng.choice(facts).format(X=topic)
-        base_opts = [
-            "1 only", "2 only", "Both 1 and 2", "Neither 1 nor 2"
-        ]
-        options = base_opts.copy()
+        options = ["1 only", "2 only", "Both 1 and 2", "Neither 1 nor 2"]
         rng.shuffle(options)
-        correct_map = {
-            "1 only": 0,
-            "2 only": 1,
-            "Both 1 and 2": 2,
-            "Neither 1 nor 2": 3
-        }
-        # pick a truth pattern
-        truth = rng.choice(["1 only", "2 only", "Both 1 and 2", "Neither 1 nor 2"])
+        truth = rng.choice(options)
         correct_index = options.index(truth)
         qtxt = f"{stem}\n\n1. {s1}\n2. {s2}\n"
         exp = rng.choice(exps)
@@ -237,10 +210,7 @@ def call_openai_mcq(model: str, topic: str, difficulty: str, language: str, n: i
         model=model,
         temperature=float(temperature),
         max_tokens=int(max_tokens),
-        messages=[
-            {"role": "system", "content": sys},
-            {"role": "user", "content": usr}
-        ]
+        messages=[{"role": "system", "content": sys}, {"role": "user", "content": usr}]
     )
     text = resp.choices[0].message.content.strip()
     if text.startswith("```"):
@@ -284,10 +254,7 @@ def call_openai_essay(model: str, topic: str, difficulty: str, language: str, n:
         model=model,
         temperature=float(temperature),
         max_tokens=int(max_tokens),
-        messages=[
-            {"role": "system", "content": sys},
-            {"role": "user", "content": usr}
-        ]
+        messages=[{"role": "system", "content": sys}, {"role": "user", "content": usr}]
     )
     text = resp.choices[0].message.content.strip()
     if text.startswith("```"):
@@ -342,10 +309,11 @@ with colB:
         num_questions = st.slider("Number of questions", 5, 100, 20, 5)
         negative_mark = st.select_slider("Negative marking", options=[0.0, -0.25, -0.33, -0.5], value=-0.33)
         shuffle_q = st.checkbox("Shuffle questions", value=True)
-        show_explanations_after = st.checkbox("Show explanations after submit", value=True)
+        # Give the checkbox a key so we can read it later
+        show_explanations_after = st.checkbox("Show explanations after submit", value=True, key="show_explanations_after")
     else:
         mains_topics = st.multiselect("Mains Topics (GS, Essay)", MAINS_GS, default=["GS2: Polity, Governance, IR"])
-        optional_subject = st.selectbox("Optional Subject (optional)", ["None"] + OPTIONALS, index=0)
+        optional_subject = st.selectbox("Optional Subject (optional)", ["None"] + OPTIONLS if False else ["None"] + OPTIONALS, index=0)
         essay_count = st.slider("Number of questions/prompts", 1, 10, 4, 1)
 
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
@@ -371,7 +339,7 @@ if "prelims_qs" not in st.session_state:
 if "mains_qs" not in st.session_state:
     st.session_state.mains_qs: List[Essay] = []
 if "answers" not in st.session_state:
-    st.session_state.answers: Dict[str, int] = {}  # MCQ: selected option index
+    st.session_state.answers: Dict[str, int] = {}
 if "essay_answers" not in st.session_state:
     st.session_state.essay_answers: Dict[str, str] = {}
 
@@ -386,7 +354,6 @@ def generate_prelims(topics: List[str], n: int):
         return blocks
     per_topic = max(1, n // len(topics))
     remainder = n - per_topic * len(topics)
-
     for i, t in enumerate(topics):
         want = per_topic + (1 if i < remainder else 0)
         if provider == "Offline (rule-based)":
@@ -406,7 +373,6 @@ def generate_mains(topics: List[str], opt_subject: Optional[str], n: int):
     pools = topics.copy()
     if opt_subject and opt_subject != "None":
         pools.append(f"Optional: {opt_subject}")
-
     for i, t in enumerate(pools):
         if provider == "Offline (rule-based)":
             prompts.extend(offline_essays(t, difficulty, language, st.session_state.seed + i * 29, 1))
@@ -418,7 +384,6 @@ def generate_mains(topics: List[str], opt_subject: Optional[str], n: int):
                 prompts.extend(offline_essays(t, difficulty, language, st.session_state.seed + i * 29, 1))
         if len(prompts) >= n:
             break
-    # top-n only
     return prompts[:n]
 
 # ======================= Actions =======================
@@ -454,23 +419,17 @@ def render_timer():
 
 # ======================= Render: Prelims =======================
 def render_prelims():
-    # Heading + timer
     brand_h2("Prelims — MCQ", brand)
     render_timer()
 
-    # No questions yet?
     if not st.session_state.prelims_qs:
         st.info("Click Generate Test to create questions.")
         return
 
-    # Render each MCQ with a UNIQUE key derived from q.id
     for i, q in enumerate(st.session_state.prelims_qs, start=1):
         st.markdown(f"**Q{i}.** {q.question}")
-
-        widget_key = f"ans_{q.id}"  # guarantees uniqueness across shuffles/regens
+        widget_key = f"ans_{q.id}"             # unique across runs/shuffles
         current = st.session_state.answers.get(q.id, None)
-
-        # If you prefer no default selection, comment 'index=' and let Streamlit manage via key
         choice = st.radio(
             "Select an option:",
             options=list(range(len(q.options))),
@@ -481,13 +440,11 @@ def render_prelims():
         st.session_state.answers[q.id] = choice
         st.markdown("---")
 
-    # On submit, score and show explanations (if enabled)
     if submit:
         total = len(st.session_state.prelims_qs)
         correct = 0
         wrong = 0
         unattempted = 0
-
         for q in st.session_state.prelims_qs:
             sel = st.session_state.answers.get(q.id, None)
             if sel is None:
@@ -496,10 +453,8 @@ def render_prelims():
                 correct += 1
             else:
                 wrong += 1
-
         score = correct * 1.0 + wrong * negative_mark
 
-        # HTML summary (no Markdown inside HTML)
         summary_html = (
             f"- Questions: <b>{total}</b><br>"
             f"- Correct: <b>{correct}</b><br>"
@@ -510,7 +465,6 @@ def render_prelims():
         )
         md_card("Result Summary", body_html=summary_html)
 
-        # Read flag safely from session_state to avoid NameError / indent issues
         show_flag = st.session_state.get("show_explanations_after", True)
         if show_flag:
             brand_h2("Review & Explanations", brand)
@@ -523,46 +477,6 @@ def render_prelims():
                     f"<b>Explanation:</b> {q.explanation}"
                 )
                 md_card(f"Q{i}.", body_html=body_html)
-
-    # Export as Markdown (pure markdown; no HTML)
-    with st.expander("Copy this test as Markdown"):
-        md_lines = []
-        for i, q in enumerate(st.session_state.prelims_qs, start=1):
-            md_lines.append(f"**Q{i}.** {q.question}")
-            for j, opt in enumerate(q.options):
-                md_lines.append(f"- {chr(65+j)}. {opt}")
-            md_lines.append("")
-        st.code("\n".join(md_lines), language="markdown")
-
-body = (
-    f"- Questions: <b>{total}</b><br>"
-    f"- Correct: <b>{correct}</b><br>"
-    f"- Wrong: <b>{wrong}</b><br>"
-    f"- Unattempted: <b>{unattempted}</b><br>"
-    f"- Negative marking: <b>{negative_mark} per wrong</b><br>"
-    f"- <b>Score: {score:.2f} / {total:.2f}</b>"
-)
-body = (
-    f"- Questions: <b>{total}</b><br>"
-    f"- Correct: <b>{correct}</b><br>"
-    f"- Wrong: <b>{wrong}</b><br>"
-    f"- Unattempted: <b>{unattempted}</b><br>"
-    f"- Negative marking: <b>{negative_mark} per wrong</b><br>"
-    f"- <b>Score: {score:.2f} / {total:.2f}</b>"
-)
-md_card("Result Summary", body_html=body)
-
-        if show_explanations_after:
-            brand_h2("Review & Explanations", brand)
-            for i, q in enumerate(st.session_state.prelims_qs, start=1):
-                sel = st.session_state.answers.get(q.id, None)
-                correct_tag = chr(65 + q.correct_index)
-                your_tag = "-" if sel is None else chr(65 + sel)
-                body = (
-                    f"Correct: **{correct_tag}** | Your answer: **{your_tag}**\n\n"
-                    f"**Explanation:** {q.explanation}"
-                )
-                md_card(f"Q{i}.", body)
 
     with st.expander("Copy this test as Markdown"):
         md_lines = []
@@ -596,8 +510,11 @@ def render_mains():
         total = len(st.session_state.mains_qs)
         md_card(
             "Submission Saved",
-            f"- Prompts: **{total}**\n- Attempted: **{attempted}**\n\n"
-            "Note: Mains answers are not auto-graded in this UI. Use rubric points for self-evaluation."
+            body_html=(
+                f"- Prompts: <b>{total}</b><br>"
+                f"- Attempted: <b>{attempted}</b><br><br>"
+                "Note: Mains answers are not auto-graded in this UI. Use rubric points for self-evaluation."
+            )
         )
 
     with st.expander("Copy this test as Markdown"):
@@ -613,4 +530,3 @@ if exam_type.startswith("Prelims"):
     render_prelims()
 else:
     render_mains()
-
