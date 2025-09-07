@@ -454,32 +454,40 @@ def render_timer():
 
 # ======================= Render: Prelims =======================
 def render_prelims():
+    # Heading + timer
     brand_h2("Prelims — MCQ", brand)
     render_timer()
 
+    # No questions yet?
     if not st.session_state.prelims_qs:
         st.info("Click Generate Test to create questions.")
         return
 
+    # Render each MCQ with a UNIQUE key derived from q.id
     for i, q in enumerate(st.session_state.prelims_qs, start=1):
         st.markdown(f"**Q{i}.** {q.question}")
-        key = f"ans_{q.id}"
+
+        widget_key = f"ans_{q.id}"  # guarantees uniqueness across shuffles/regens
         current = st.session_state.answers.get(q.id, None)
+
+        # If you prefer no default selection, comment 'index=' and let Streamlit manage via key
         choice = st.radio(
             "Select an option:",
             options=list(range(len(q.options))),
             format_func=lambda idx: f"{chr(65+idx)}. {q.options[idx]}",
-            index=current if current is not None else None,
-            key=key
+            index=current if current is not None else 0,
+            key=widget_key
         )
         st.session_state.answers[q.id] = choice
         st.markdown("---")
 
+    # On submit, score and show explanations (if enabled)
     if submit:
         total = len(st.session_state.prelims_qs)
         correct = 0
         wrong = 0
         unattempted = 0
+
         for q in st.session_state.prelims_qs:
             sel = st.session_state.answers.get(q.id, None)
             if sel is None:
@@ -488,8 +496,44 @@ def render_prelims():
                 correct += 1
             else:
                 wrong += 1
-        # Scoring: +1 correct, negative_mark for wrong
+
         score = correct * 1.0 + wrong * negative_mark
+
+        # HTML summary (no Markdown inside HTML)
+        summary_html = (
+            f"- Questions: <b>{total}</b><br>"
+            f"- Correct: <b>{correct}</b><br>"
+            f"- Wrong: <b>{wrong}</b><br>"
+            f"- Unattempted: <b>{unattempted}</b><br>"
+            f"- Negative marking: <b>{negative_mark} per wrong</b><br>"
+            f"- <b>Score: {score:.2f} / {total:.2f}</b>"
+        )
+        md_card("Result Summary", body_html=summary_html)
+
+        # Read flag safely from session_state to avoid NameError / indent issues
+        show_flag = st.session_state.get("show_explanations_after", True)
+        if show_flag:
+            brand_h2("Review & Explanations", brand)
+            for i, q in enumerate(st.session_state.prelims_qs, start=1):
+                sel = st.session_state.answers.get(q.id, None)
+                correct_tag = chr(65 + q.correct_index)
+                your_tag = "-" if sel is None else chr(65 + sel)
+                body_html = (
+                    f"Correct: <b>{correct_tag}</b> | Your answer: <b>{your_tag}</b><br><br>"
+                    f"<b>Explanation:</b> {q.explanation}"
+                )
+                md_card(f"Q{i}.", body_html=body_html)
+
+    # Export as Markdown (pure markdown; no HTML)
+    with st.expander("Copy this test as Markdown"):
+        md_lines = []
+        for i, q in enumerate(st.session_state.prelims_qs, start=1):
+            md_lines.append(f"**Q{i}.** {q.question}")
+            for j, opt in enumerate(q.options):
+                md_lines.append(f"- {chr(65+j)}. {opt}")
+            md_lines.append("")
+        st.code("\n".join(md_lines), language="markdown")
+
 body = (
     f"- Questions: <b>{total}</b><br>"
     f"- Correct: <b>{correct}</b><br>"
