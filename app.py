@@ -95,13 +95,14 @@ class Essay:
 def brand_h2(text: str, color: str):
     st.markdown(f"<h2 style='margin:.25rem 0 .75rem 0; color:{color}'>{text}</h2>", unsafe_allow_html=True)
 
-def md_card(title_md: str, body_md: str = ""):
-    body_html = f'<div style="margin-top:.35rem">{body_md}</div>' if body_md else ""
+def md_card(title_text: str, body_html: str = ""):
+    # body_html must be real HTML (use <b>…</b>, <br>, lists, etc.)
+    extra = f'<div style="margin-top:.35rem">{body_html}</div>' if body_html else ""
     st.markdown(
         f"""
 <div style="border:1px solid #e5e7eb; padding:.75rem 1rem; border-radius:10px; margin-bottom:.75rem;">
-  <div style="font-weight:600">{title_md}</div>
-  {body_html}
+  <div style="font-weight:600">{title_text}</div>
+  {extra}
 </div>
         """,
         unsafe_allow_html=True
@@ -489,17 +490,24 @@ def render_prelims():
                 wrong += 1
         # Scoring: +1 correct, negative_mark for wrong
         score = correct * 1.0 + wrong * negative_mark
-        md_card(
-            "Result Summary",
-            f"""
-- Questions: **{total}**  
-- Correct: **{correct}**  
-- Wrong: **{wrong}**  
-- Unattempted: **{unattempted}**  
-- Negative marking: **{negative_mark} per wrong**  
-- **Score: {score:.2f} / {total:.2f}**
-"""
-        )
+body = (
+    f"- Questions: <b>{total}</b><br>"
+    f"- Correct: <b>{correct}</b><br>"
+    f"- Wrong: <b>{wrong}</b><br>"
+    f"- Unattempted: <b>{unattempted}</b><br>"
+    f"- Negative marking: <b>{negative_mark} per wrong</b><br>"
+    f"- <b>Score: {score:.2f} / {total:.2f}</b>"
+)
+body = (
+    f"- Questions: <b>{total}</b><br>"
+    f"- Correct: <b>{correct}</b><br>"
+    f"- Wrong: <b>{wrong}</b><br>"
+    f"- Unattempted: <b>{unattempted}</b><br>"
+    f"- Negative marking: <b>{negative_mark} per wrong</b><br>"
+    f"- <b>Score: {score:.2f} / {total:.2f}</b>"
+)
+md_card("Result Summary", body_html=body)
+
         if show_explanations_after:
             brand_h2("Review & Explanations", brand)
             for i, q in enumerate(st.session_state.prelims_qs, start=1):
@@ -562,16 +570,3 @@ if exam_type.startswith("Prelims"):
 else:
     render_mains()
 
-# ======================= Footer Usage Panel =======================
-init_rate_limit_state()
-ss = st.session_state
-st.markdown("**Usage limits**")
-st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
-if HOURLY_SHARED_CAP > 0:
-    counters = _shared_hourly_counters()
-    used = counters.get(_hour_bucket(), 0)
-    st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
-remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
-if remaining > 0:
-    st.progress(min(1.0, (COOLDOWN_SECONDS - remaining) / COOLDOWN_SECONDS))
-    st.caption(f"Cooldown: {remaining}s")
