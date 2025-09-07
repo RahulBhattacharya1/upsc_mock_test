@@ -310,8 +310,11 @@ with st.sidebar:
         used = counters.get(_hour_bucket(), 0)
         st.markdown(f"<span style='font-size:0.9rem'>Hour capacity: {used} / {HOURLY_SHARED_CAP}</span>", unsafe_allow_html=True)
     
-    est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
-    st.markdown(f"<span style='font-size:0.9rem'>Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}</span>", unsafe_allow_html=True)
+        est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
+        st.markdown(
+            f"<span style='font-size:0.9rem'>Budget: &#36;{est_spend:.2f} / &#36;{DAILY_BUDGET:.2f}</span>",
+            unsafe_allow_html=True
+        )
 
     remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
     if remaining > 0:
