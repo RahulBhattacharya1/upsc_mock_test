@@ -478,15 +478,6 @@ def render_prelims():
                 )
                 md_card(f"Q{i}.", body_html=body_html)
 
-    with st.expander("Copy this test as Markdown"):
-        md_lines = []
-        for i, q in enumerate(st.session_state.prelims_qs, start=1):
-            md_lines.append(f"**Q{i}.** {q.question}")
-            for j, opt in enumerate(q.options):
-                md_lines.append(f"- {chr(65+j)}. {opt}")
-            md_lines.append("")
-        st.code("\n".join(md_lines), language="markdown")
-
 # ======================= Render: Mains =======================
 def render_mains():
     brand_h2("Mains — Descriptive", brand)
