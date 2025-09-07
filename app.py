@@ -297,20 +297,21 @@ with st.sidebar:
     brand = st.color_picker("Brand color", value="#0F62FE")
     temp = st.slider("Creativity (OpenAI)", 0.0, 1.0, 0.4, 0.05)
     max_tokens = st.slider("Max tokens (OpenAI)", 512, 4096, 1500, 32)
-    st.caption("Tip: Use Offline to demo without any API.")
+
 
     init_rate_limit_state()
     ss = st.session_state
 
     st.markdown("**Usage limits**")
-    st.write(f"Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations")
+    st.markdown(f"<span style='font-size:0.9rem'>Today: {ss['rl_calls_today']} / {DAILY_LIMIT} generations</span>", unsafe_allow_html=True)
+    
     if HOURLY_SHARED_CAP > 0:
         counters = _shared_hourly_counters()
         used = counters.get(_hour_bucket(), 0)
-        st.write(f"Hour capacity: {used} / {HOURLY_SHARED_CAP}")
-
+        st.markdown(f"<span style='font-size:0.9rem'>Hour capacity: {used} / {HOURLY_SHARED_CAP}</span>", unsafe_allow_html=True)
+    
     est_spend = ss['rl_calls_today'] * EST_COST_PER_GEN
-    st.write(f"Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}")
+    st.markdown(f"<span style='font-size:0.9rem'>Budget: ${est_spend:.2f} / ${DAILY_BUDGET:.2f}</span>", unsafe_allow_html=True)
 
     remaining = int(max(0, ss["rl_last_ts"] + COOLDOWN_SECONDS - time.time()))
     if remaining > 0:
